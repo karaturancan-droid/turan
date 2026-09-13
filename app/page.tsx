@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowUpRight, BarChart3, Boxes, Building2, Check, ChevronRight, CircleDollarSign, ClipboardList, CloudUpload, FileText, Fuel, LayoutDashboard, MapPinned, Paperclip, Menu, Package, Plus, ReceiptText, Settings2, Server, ShieldCheck, Sparkles, Truck, Users, WalletCards, Wrench, X } from 'lucide-react'
+import { ArrowUpRight, BarChart3, Boxes, Building2, Check, ChevronDown, ChevronRight, CircleDollarSign, ClipboardList, CloudUpload, FileText, Fuel, LayoutDashboard, MapPinned, Paperclip, Menu, Package, Plus, ReceiptText, Settings2, Server, ShieldCheck, Sparkles, Truck, Users, WalletCards, Wrench, X } from 'lucide-react'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { CompleteEmployeeView, CompleteInventoryView } from '@/components/operations-complete'
 import { ControlCenter } from '@/components/control-center'
