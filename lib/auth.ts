@@ -60,6 +60,12 @@ export const auth = betterAuth({
         defaultValue: 'pending',
         input: false,
       },
+      permissions: {
+        type: 'json',
+        required: false,
+        defaultValue: [],
+        input: false,
+      },
     },
   },
   ...(process.env.NODE_ENV === 'development'
