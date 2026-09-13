@@ -46,6 +46,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
     <label>Parola<input required minLength={8} type="password" value={password} onChange={event => setPassword(event.target.value)} /></label>
     {error && <p className="auth-error">{error}</p>}
     <button className="primary-button auth-submit" disabled={loading}>{loading ? 'Kontrol ediliyor…' : mode === 'sign-in' ? 'Giriş yap' : 'Hesap oluştur'}</button>
+    {mode === 'sign-in' && <a className="auth-link auth-forgot-link" href="/forgot-password">Şifremi unuttum</a>}
     <div className="auth-divider">veya</div>
     <button type="button" className="secondary-button auth-submit" disabled={loading} onClick={signInWithGoogle}>Google ile devam et</button>
   </form>

@@ -1,5 +1,6 @@
 import { betterAuth } from 'better-auth'
 import { Pool } from 'pg'
+import { Resend } from 'resend'
 
 const baseURL = process.env.BETTER_AUTH_URL
   ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined)
@@ -21,7 +22,21 @@ export const auth = betterAuth({
   database: new Pool({ connectionString: process.env.DATABASE_URL }),
   baseURL,
   trustedOrigins: runtimeOrigins,
-  emailAndPassword: { enabled: true },
+  emailAndPassword: {
+    enabled: true,
+    resetPasswordTokenExpiresIn: 60 * 60,
+    sendResetPassword: async ({ user, url }) => {
+      const resend = new Resend(process.env.RESEND_API_KEY)
+      const from = process.env.RESEND_EMAIL_DOMAIN ? `Zirveflow <noreply@${process.env.RESEND_EMAIL_DOMAIN}>` : 'Zirveflow <onboarding@resend.dev>'
+      const { error } = await resend.emails.send({
+        from,
+        to: [user.email],
+        subject: 'Zirveflow şifre sıfırlama bağlantınız',
+        html: `<p>Merhaba ${user.name || ''},</p><p>Şifrenizi yenilemek için aşağıdaki bağlantıyı kullanın. Bu bağlantı 1 saat geçerlidir.</p><p><a href="${url}">Şifremi yenile</a></p><p>Bu isteği siz yapmadıysanız bu e-postayı yok sayabilirsiniz.</p>`,
+      }, { idempotencyKey: `password-reset/${user.id}/${Date.now()}` })
+      if (error) throw new Error(`Password reset email failed: ${error.message}`)
+    },
+  },
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID || '',
