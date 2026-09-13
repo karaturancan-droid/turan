@@ -9,6 +9,9 @@ on:
 permissions:
   contents: write
 
+# Configure the private repository variable DESKTOP_API_URL with the deployed HTTPS app origin before tagging a release.
+# The installer keeps the Next.js shell local; runtime API requests use the public auth/API origin.
+
 jobs:
   release:
     strategy:
@@ -52,6 +55,8 @@ jobs:
       - name: Build and publish installer
         uses: tauri-apps/tauri-action@v0
         env:
+          NEXT_PUBLIC_BETTER_AUTH_URL: ${{ vars.DESKTOP_API_URL }}
+          BETTER_AUTH_URL: ${{ vars.DESKTOP_API_URL }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: desktop-v__VERSION__
