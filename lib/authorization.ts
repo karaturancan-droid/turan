@@ -40,6 +40,8 @@ export function canAccess(user: SessionUser, resource: string, action: 'read' | 
     assets: ['field', 'operations'],
     inventory: ['field', 'operations'],
     finance: ['finance'],
+    companies: ['finance'],
+    ledger: ['finance'],
     suppliers: ['finance', 'operations'],
     purchases: ['finance', 'operations'],
     documents: ['finance', 'operations'],

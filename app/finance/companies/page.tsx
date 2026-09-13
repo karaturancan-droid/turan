@@ -1,0 +1,29 @@
+'use client'
+
+import { FormEvent, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
+import { ArrowLeft, Building2, Plus, Search, WalletCards } from 'lucide-react'
+
+type Company = { id: string; name: string; taxNumber?: string; phone?: string; email?: string; address?: string; balance: number; entryCount: number }
+type Entry = { id: string; companyId: string; companyName: string; entryType: string; documentNumber?: string; description: string; amount: number; dueDate?: string; status: string }
+
+const labels: Record<string, string> = { invoice: 'Fatura', debt: 'Borç', receivable: 'Alacak', payment: 'Ödeme', receipt: 'Tahsilat', purchase: 'Satın alma' }
+
+export default function FinanceCompaniesPage() {
+  const [companies, setCompanies] = useState<Company[]>([])
+  const [entries, setEntries] = useState<Entry[]>([])
+  const [selected, setSelected] = useState('')
+  const [search, setSearch] = useState('')
+  const [name, setName] = useState('')
+  const [entryType, setEntryType] = useState('invoice')
+  const [description, setDescription] = useState('')
+  const [amount, setAmount] = useState('')
+  const [message, setMessage] = useState('')
+
+  async function load() { const [companyResponse, entryResponse] = await Promise.all([fetch('/api/finance/companies', { cache: 'no-store' }), fetch(`/api/finance/ledger${selected ? `?companyId=${selected}` : ''}`, { cache: 'no-store' })]); if (companyResponse.ok) { const data = await companyResponse.json(); setCompanies(data.companies) }; if (entryResponse.ok) { const data = await entryResponse.json(); setEntries(data.entries) } }
+  useEffect(() => { void load() }, [selected])
+  const visible = useMemo(() => companies.filter(company => company.name.toLocaleLowerCase('tr-TR').includes(search.toLocaleLowerCase('tr-TR'))), [companies, search])
+  async function createCompany(event: FormEvent) { event.preventDefault(); const response = await fetch('/api/finance/companies', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) }); setMessage(response.ok ? 'Firma kaydedildi.' : 'Firma kaydedilemedi.'); if (response.ok) { setName(''); await load() } }
+  async function createEntry(event: FormEvent) { event.preventDefault(); if (!selected) { setMessage('Önce firma seçin.'); return }; const response = await fetch('/api/finance/ledger', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ companyId: selected, entryType, description, amount: Number(amount) }) }); setMessage(response.ok ? 'Cari hareket kaydedildi.' : 'Hareket kaydedilemedi.'); if (response.ok) { setDescription(''); setAmount(''); await load() } }
+  return <main className="company-ledger-page"><header className="company-ledger-header"><Link href="/" className="back-link"><ArrowLeft size={16} /> Ana panele dön</Link><div className="company-ledger-title"><div className="banking-icon"><Building2 size={24} /></div><div><span className="eyebrow">Finans merkezi</span><h1>Firmalar & Cari Hesap</h1><p>Her fatura, borç, ödeme ve tahsilatı ilgili firma altında takip edin.</p></div></div></header><section className="company-ledger-grid"><div className="company-list-panel"><div className="section-heading"><div><span className="eyebrow">Firma rehberi</span><h2>Çalışılan firmalar</h2></div><label className="company-search"><Search size={15} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Firma ara" /></label></div><div className="company-cards">{visible.map(company => <button className={`company-card ${selected === company.id ? 'active' : ''}`} key={company.id} onClick={() => setSelected(company.id)}><span className="company-avatar"><Building2 size={16} /></span><span><strong>{company.name}</strong><small>{company.entryCount} kayıt</small></span><b className={Number(company.balance) >= 0 ? 'balance-positive' : 'balance-negative'}>{Number(company.balance).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</b></button>)}</div><form className="inline-form" onSubmit={createCompany}><input required value={name} onChange={event => setName(event.target.value)} placeholder="Yeni firma adı" /><button className="primary-action" type="submit"><Plus size={15} /> Firma ekle</button></form></div><aside className="company-detail-panel"><div className="company-detail-heading"><div><span className="eyebrow">Seçili firma</span><h2>{companies.find(company => company.id === selected)?.name || 'Firma seçin'}</h2></div><WalletCards size={21} /></div>{selected ? <><form className="ledger-form" onSubmit={createEntry}><h3>Yeni cari hareket</h3><select value={entryType} onChange={event => setEntryType(event.target.value)}><option value="invoice">Fatura</option><option value="debt">Borç</option><option value="receivable">Alacak</option><option value="payment">Ödeme</option><option value="receipt">Tahsilat</option><option value="purchase">Satın alma</option></select><input required value={description} onChange={event => setDescription(event.target.value)} placeholder="Açıklama" /><input required min="0.01" step="0.01" type="number" value={amount} onChange={event => setAmount(event.target.value)} placeholder="Tutar (₺)" /><button className="primary-action" type="submit">Hareketi kaydet</button></form><div className="ledger-list"><h3>Firma hareketleri</h3>{entries.map(entry => <div className="ledger-row" key={entry.id}><div><strong>{labels[entry.entryType] || entry.entryType}</strong><span>{entry.description}</span></div><b>{Number(entry.amount).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}</b></div>)}</div></> : <div className="empty-state"><Building2 size={24} /><span>Detayları görmek için listeden bir firma seçin.</span></div>}{message && <p className="form-message">{message}</p>}</aside></section></main>
+}
