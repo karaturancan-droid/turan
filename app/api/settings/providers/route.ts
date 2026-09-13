@@ -33,9 +33,9 @@ export async function GET() {
     const user = await getAdmin()
     if (!user) return NextResponse.json({ error: 'Yönetici oturumu gerekli' }, { status: 403 })
     const result = await pool.query('SELECT provider_settings FROM zirveflow_company_settings WHERE user_id = $1', [user.id])
-    const settings = (result.rows[0]?.provider_settings || {}) as Record<string, { enabled?: boolean; testedAt?: string; testStatus?: string }>
+    const settings = (result.rows[0]?.provider_settings || {}) as Record<string, { enabled?: boolean; testedAt?: string; testStatus?: string; secretConfigured?: boolean }>
     const driveConfigured = await getDriveToken(user.id).then(() => true).catch(() => false)
-    return NextResponse.json({ providers: providers.map((provider) => ({ ...provider, configured: provider.id === 'drive' ? driveConfigured : provider.vars.some((key) => Boolean(process.env[key])), enabled: settings[provider.id]?.enabled === true, testedAt: settings[provider.id]?.testedAt || null, testStatus: settings[provider.id]?.testStatus || null, variables: provider.vars.map((key) => ({ key, configured: Boolean(process.env[key]) })) })) })
+    return NextResponse.json({ providers: providers.map((provider) => ({ ...provider, configured: provider.id === 'drive' ? driveConfigured : Boolean(settings[provider.id]?.secretConfigured) || provider.vars.some((key) => Boolean(process.env[key])), enabled: settings[provider.id]?.enabled === true, testedAt: settings[provider.id]?.testedAt || null, testStatus: settings[provider.id]?.testStatus || null, variables: provider.vars.map((key) => ({ key, configured: Boolean(process.env[key]) })) })) })
   } catch {
     return NextResponse.json({ providers: [], error: 'Sağlayıcı ayarları şu anda okunamadı.' }, { status: 200 })
   }
@@ -49,9 +49,10 @@ export async function PUT(request: Request) {
     const provider = providers.find((item) => item.id === body.providerId)
     if (!provider) return NextResponse.json({ error: 'Geçersiz sağlayıcı.' }, { status: 400 })
     if (body.enabled && provider.id === 'drive') { try { await getDriveToken(user.id) } catch { return NextResponse.json({ error: 'Google Drive hesabı henüz bağlanmamış.' }, { status: 400 }) } }
-    if (body.enabled && provider.id !== 'drive' && !provider.vars.some((key) => Boolean(process.env[key]))) return NextResponse.json({ error: `${provider.name} için gerekli bağlantı değişkenleri eksik.` }, { status: 400 })
     const current = await pool.query('SELECT provider_settings FROM zirveflow_company_settings WHERE user_id = $1', [user.id])
     const settings = (current.rows[0]?.provider_settings || {}) as Record<string, Record<string, unknown>>
+    const storedSecret = Boolean(settings[provider.id]?.secretConfigured)
+    if (body.enabled && provider.id !== 'drive' && !body.apiKey?.trim() && !storedSecret && !provider.vars.some((key) => Boolean(process.env[key]))) return NextResponse.json({ error: `${provider.name} için gerekli API bilgisi eksik.` }, { status: 400 })
     if (body.apiKey?.trim()) { if (body.apiKey.length < 12) return NextResponse.json({ error: 'API anahtarı çok kısa.' }, { status: 400 }); settings[provider.id] = { ...(settings[provider.id] || {}), secret: encryptProviderSecret(body.apiKey.trim()), secretConfigured: true } }
     settings[provider.id] = { ...(settings[provider.id] || {}), enabled: body.enabled === true, testedAt: null, testStatus: null }
     await pool.query(`INSERT INTO zirveflow_company_settings (user_id, provider_settings, updated_at) VALUES ($1, $2::jsonb, NOW()) ON CONFLICT (user_id) DO UPDATE SET provider_settings = EXCLUDED.provider_settings, updated_at = NOW()`, [user.id, JSON.stringify(settings)])
@@ -66,8 +67,9 @@ export async function POST(request: Request) {
     const body = await request.json() as { providerId?: string }
     const provider = providers.find((item) => item.id === body.providerId)
     if (!provider) return NextResponse.json({ error: 'Geçersiz sağlayıcı.' }, { status: 400 })
-    const configured = provider.id === 'drive' ? await getDriveToken(user.id).then(async (token) => { const response = await fetch('https://www.googleapis.com/drive/v3/about?fields=user%2CstorageQuota', { headers: { Authorization: `Bearer ${token}` } }); return response.ok }) : provider.vars.some((key) => Boolean(process.env[key]))
     const current = await pool.query('SELECT provider_settings FROM zirveflow_company_settings WHERE user_id = $1', [user.id])
+    const savedSettings = (current.rows[0]?.provider_settings || {}) as Record<string, { secretConfigured?: boolean }>
+    const configured = provider.id === 'drive' ? await getDriveToken(user.id).then(async (token) => { const response = await fetch('https://www.googleapis.com/drive/v3/about?fields=user%2CstorageQuota', { headers: { Authorization: `Bearer ${token}` } }); return response.ok }) : Boolean(savedSettings[provider.id]?.secretConfigured) || provider.vars.some((key) => Boolean(process.env[key]))
     const settings = (current.rows[0]?.provider_settings || {}) as Record<string, Record<string, unknown>>
     settings[provider.id] = { ...(settings[provider.id] || {}), testedAt: new Date().toISOString(), testStatus: configured ? 'success' : 'missing_config' }
     await pool.query(`INSERT INTO zirveflow_company_settings (user_id, provider_settings, updated_at) VALUES ($1, $2::jsonb, NOW()) ON CONFLICT (user_id) DO UPDATE SET provider_settings = EXCLUDED.provider_settings, updated_at = NOW()`, [user.id, JSON.stringify(settings)])
