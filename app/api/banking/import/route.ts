@@ -1,16 +1,12 @@
 import { NextResponse } from 'next/server'
-import { headers } from 'next/headers'
 import { Pool } from 'pg'
-import { auth } from '@/lib/auth'
+import { canAccess, getSessionUser } from '@/lib/authorization'
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 
 async function getUser() {
-  const session = await auth.api.getSession({ headers: await headers() })
-  const user = session?.user
-  if (!user) return null
-  const role = (user as typeof user & { role?: string }).role
-  return !role || ['admin', 'manager', 'owner'].includes(role) ? user : null
+  const user = await getSessionUser()
+  return user && canAccess(user, 'finance', 'write') ? user : null
 }
 
 export async function POST(request: Request) {
