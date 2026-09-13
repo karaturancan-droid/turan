@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { FormEvent, Suspense, useSearchParams, useState } from 'react'
+import { FormEvent, Suspense, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 
 function ResetPasswordForm() {
   const token = useSearchParams().get('token') || ''
