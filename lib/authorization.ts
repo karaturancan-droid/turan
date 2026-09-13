@@ -38,6 +38,7 @@ export function canAccess(user: SessionUser, resource: string, action: 'read' | 
     faults: ['field', 'operations', 'driver'],
     fuel: ['field', 'operations', 'fuel'],
     assets: ['field', 'operations'],
+    inventory: ['field', 'operations'],
     finance: ['finance'],
     suppliers: ['finance', 'operations'],
     purchases: ['finance', 'operations'],
