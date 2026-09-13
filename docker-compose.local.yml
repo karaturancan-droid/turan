@@ -1,0 +1,48 @@
+services:
+  zirveflow-db:
+    image: postgres:16-alpine
+    container_name: zirveflow-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-zirveflow}
+      POSTGRES_USER: ${POSTGRES_USER:-zirveflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.local-server}
+    volumes:
+      - ${DATA_PATH:-C:/ZirveflowData}/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  zirveflow-app:
+    image: node:22-alpine
+    container_name: zirveflow-app
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "corepack enable && pnpm install --frozen-lockfile && pnpm build && pnpm start"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-zirveflow}:${POSTGRES_PASSWORD}@zirveflow-db:5432/${POSTGRES_DB:-zirveflow}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in .env.local-server}
+    volumes:
+      - ./:/app
+      - ${DATA_PATH:-C:/ZirveflowData}/uploads:/app/.data/uploads
+    ports:
+      - "3000:3000"
+    depends_on:
+      zirveflow-db:
+        condition: service_healthy
+  zirveflow-proxy:
+    image: caddy:2-alpine
+    container_name: zirveflow-proxy
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - zirveflow-app
+networks:
+  default:
+    name: zirveflow-local

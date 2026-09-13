@@ -1,0 +1,11 @@
+{
+  "name": "Zirveflow İşletme Yönetimi",
+  "short_name": "Zirveflow",
+  "description": "İşletme operasyon, stok, bakım, finans ve saha kontrol merkezi.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f8f7",
+  "theme_color": "#087f78",
+  "lang": "tr",
+  "icons": []
+}

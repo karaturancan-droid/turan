@@ -1,0 +1,50 @@
+import { betterAuth } from 'better-auth'
+import { Pool } from 'pg'
+
+const baseURL = process.env.BETTER_AUTH_URL
+  ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined)
+  ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined)
+  ?? process.env.V0_RUNTIME_URL
+
+const runtimeOrigins = [
+  'http://localhost:3000',
+  process.env.V0_RUNTIME_URL,
+  process.env.V0_DEV_APP_URL,
+  process.env.V0_BUILD_URL,
+  process.env.V0_SANDBOX_URL,
+  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
+  process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined,
+].filter((origin): origin is string => Boolean(origin))
+
+export const auth = betterAuth({
+  secret: process.env.BETTER_AUTH_SECRET,
+  database: new Pool({ connectionString: process.env.DATABASE_URL }),
+  baseURL,
+  trustedOrigins: runtimeOrigins,
+  emailAndPassword: { enabled: true },
+  user: {
+    additionalFields: {
+      role: {
+        type: 'string',
+        required: false,
+        defaultValue: 'field',
+        input: false,
+      },
+      siteId: {
+        type: 'string',
+        required: false,
+        input: false,
+      },
+    },
+  },
+  ...(process.env.NODE_ENV === 'development'
+    ? {
+        advanced: {
+          defaultCookieAttributes: {
+            sameSite: 'none' as const,
+            secure: true,
+          },
+        },
+      }
+    : {}),
+})

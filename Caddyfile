@@ -1,0 +1,4 @@
+:80 {
+  reverse_proxy zirveflow-app:3000
+  encode gzip
+}
