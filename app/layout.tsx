@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'zirveflow | Ticari Yönetim',
+  title: 'Madenova | İşletme Yönetimi',
   description: 'Çok firmalı ön muhasebe, stok ve finans yönetimi.',
   generator: 'v0.app',
   icons: {

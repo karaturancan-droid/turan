@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "ZirveFlow masaüstü uygulaması için temel güvenli pencere yetkileri",
+  "description": "Madenova masaüstü uygulaması için temel güvenli pencere yetkileri",
   "windows": ["main"],
   "permissions": ["core:default"]
 }
