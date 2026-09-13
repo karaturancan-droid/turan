@@ -2,6 +2,11 @@ name: Build ZirveFlow desktop installers
 
 on:
   workflow_dispatch:
+    inputs:
+      desktop_api_url:
+        description: 'Yayınlanan HTTPS uygulama adresi'
+        required: true
+        type: string
   push:
     tags:
       - 'desktop-v*'
@@ -52,11 +57,25 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Resolve desktop API URL
+        id: config
+        shell: bash
+        env:
+          INPUT_URL: ${{ inputs.desktop_api_url }}
+          REPOSITORY_URL: ${{ vars.DESKTOP_API_URL }}
+        run: |
+          URL="${INPUT_URL:-$REPOSITORY_URL}"
+          if [[ -z "$URL" || "$URL" != https://* ]]; then
+            echo "DESKTOP_API_URL must be an HTTPS production URL. Configure the repository variable or workflow input." >&2
+            exit 1
+          fi
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
       - name: Build and publish installer
         uses: tauri-apps/tauri-action@v0
         env:
-          NEXT_PUBLIC_BETTER_AUTH_URL: ${{ vars.DESKTOP_API_URL }}
-          BETTER_AUTH_URL: ${{ vars.DESKTOP_API_URL }}
+          NEXT_PUBLIC_BETTER_AUTH_URL: ${{ steps.config.outputs.url }}
+          BETTER_AUTH_URL: ${{ steps.config.outputs.url }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: desktop-v__VERSION__
