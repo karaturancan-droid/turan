@@ -24,8 +24,20 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
       setError('Giriş bilgileri doğrulanamadı. Lütfen tekrar deneyin.')
       return
     }
-    router.push('/')
+    const sessionResponse = await fetch('/api/auth/get-session', { credentials: 'include' })
+    const sessionData = await sessionResponse.json().catch(() => null) as { user?: { accountStatus?: string } } | null
+    router.push(sessionData?.user?.accountStatus === 'approved' ? '/' : '/account-pending')
     router.refresh()
+  }
+
+  async function signInWithGoogle() {
+    setLoading(true)
+    setError('')
+    const result = await authClient.signIn.social({ provider: 'google', callbackURL: '/' })
+    if (result.error) {
+      setError('Google ile giriş yapılamadı. OAuth ayarlarını kontrol edin.')
+      setLoading(false)
+    }
   }
 
   return <form className="auth-form" onSubmit={submit}>
@@ -34,5 +46,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
     <label>Parola<input required minLength={8} type="password" value={password} onChange={event => setPassword(event.target.value)} /></label>
     {error && <p className="auth-error">{error}</p>}
     <button className="primary-button auth-submit" disabled={loading}>{loading ? 'Kontrol ediliyor…' : mode === 'sign-in' ? 'Giriş yap' : 'Hesap oluştur'}</button>
+    <div className="auth-divider">veya</div>
+    <button type="button" className="secondary-button auth-submit" disabled={loading} onClick={signInWithGoogle}>Google ile devam et</button>
   </form>
 }

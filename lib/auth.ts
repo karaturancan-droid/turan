@@ -22,6 +22,25 @@ export const auth = betterAuth({
   baseURL,
   trustedOrigins: runtimeOrigins,
   emailAndPassword: { enabled: true },
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+    },
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (user) => ({
+          data: {
+            ...user,
+            role: user.email.toLowerCase() === 'karaturancan@gmail.com' ? 'admin' : 'field',
+            accountStatus: user.email.toLowerCase() === 'karaturancan@gmail.com' ? 'approved' : 'pending',
+          },
+        }),
+      },
+    },
+  },
   user: {
     additionalFields: {
       role: {
@@ -33,6 +52,12 @@ export const auth = betterAuth({
       siteId: {
         type: 'string',
         required: false,
+        input: false,
+      },
+      accountStatus: {
+        type: 'string',
+        required: false,
+        defaultValue: 'pending',
         input: false,
       },
     },
