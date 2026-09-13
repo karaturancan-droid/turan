@@ -3,6 +3,7 @@ import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { Pool } from 'pg'
 import { getToken } from '@vercel/connect'
+import { encryptProviderSecret } from '@/lib/provider-secrets'
 
 const DRIVE_CONNECTOR = 'google/zirveflow-shared-drive'
 const pool = new Pool({ connectionString: process.env.DATABASE_URL })
@@ -44,14 +45,15 @@ export async function PUT(request: Request) {
   try {
     const user = await getAdmin()
     if (!user) return NextResponse.json({ error: 'Yönetici oturumu gerekli' }, { status: 403 })
-    const body = await request.json() as { providerId?: string; enabled?: boolean }
+    const body = await request.json() as { providerId?: string; enabled?: boolean; apiKey?: string }
     const provider = providers.find((item) => item.id === body.providerId)
     if (!provider) return NextResponse.json({ error: 'Geçersiz sağlayıcı.' }, { status: 400 })
     if (body.enabled && provider.id === 'drive') { try { await getDriveToken(user.id) } catch { return NextResponse.json({ error: 'Google Drive hesabı henüz bağlanmamış.' }, { status: 400 }) } }
     if (body.enabled && provider.id !== 'drive' && !provider.vars.some((key) => Boolean(process.env[key]))) return NextResponse.json({ error: `${provider.name} için gerekli bağlantı değişkenleri eksik.` }, { status: 400 })
     const current = await pool.query('SELECT provider_settings FROM zirveflow_company_settings WHERE user_id = $1', [user.id])
-    const settings = (current.rows[0]?.provider_settings || {}) as Record<string, unknown>
-    settings[provider.id] = { enabled: body.enabled === true, testedAt: null, testStatus: null }
+    const settings = (current.rows[0]?.provider_settings || {}) as Record<string, Record<string, unknown>>
+    if (body.apiKey?.trim()) { if (body.apiKey.length < 12) return NextResponse.json({ error: 'API anahtarı çok kısa.' }, { status: 400 }); settings[provider.id] = { ...(settings[provider.id] || {}), secret: encryptProviderSecret(body.apiKey.trim()), secretConfigured: true } }
+    settings[provider.id] = { ...(settings[provider.id] || {}), enabled: body.enabled === true, testedAt: null, testStatus: null }
     await pool.query(`INSERT INTO zirveflow_company_settings (user_id, provider_settings, updated_at) VALUES ($1, $2::jsonb, NOW()) ON CONFLICT (user_id) DO UPDATE SET provider_settings = EXCLUDED.provider_settings, updated_at = NOW()`, [user.id, JSON.stringify(settings)])
     return NextResponse.json({ providerId: provider.id, enabled: body.enabled === true })
   } catch { return NextResponse.json({ error: 'Sağlayıcı ayarı kaydedilemedi.' }, { status: 500 }) }
